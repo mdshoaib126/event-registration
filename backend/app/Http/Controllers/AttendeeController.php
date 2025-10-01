@@ -1,0 +1,381 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use App\Models\Event;
+use App\Models\Attendee;
+use App\Services\QrCodeService;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+
+class AttendeeController extends Controller
+{
+    protected $qrCodeService;
+
+    public function __construct(QrCodeService $qrCodeService)
+    {
+        $this->qrCodeService = $qrCodeService;
+    }
+
+    /**
+     * Display a listing of attendees for an event
+     */
+    public function index(Event $event, Request $request)
+    {
+        $query = $event->attendees()->with(['qrCode', 'checkedInBy']);
+
+        // Filter by check-in status
+        if ($request->has('checked_in')) {
+            $query->where('is_checked_in', $request->boolean('checked_in'));
+        }
+
+        // Filter by ticket type
+        if ($request->has('ticket_type')) {
+            $query->where('ticket_type', $request->ticket_type);
+        }
+
+        // Search by name or email
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('company', 'like', "%{$search}%");
+            });
+        }
+
+        $attendees = $query->orderBy('created_at', 'desc')->paginate(20);
+
+        return response()->json($attendees);
+    }
+
+    /**
+     * Public registration for events
+     */
+    public function register(Request $request, $slug)
+    {
+        $event = Event::where('slug', $slug)
+            ->where('status', 'published')
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        // Check if event is full
+        if ($event->isFull()) {
+            return response()->json(['error' => 'Event is full'], 422);
+        }
+
+        // Validate based on event custom fields
+        $rules = [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:attendees,email,NULL,id,event_id,' . $event->id,
+            'phone' => 'nullable|string|max:20',
+            'company' => 'nullable|string|max:255',
+            'designation' => 'nullable|string|max:255',
+            'ticket_type' => 'nullable|string|max:100',
+        ];
+
+        // Add validation for custom fields
+        if ($event->custom_fields) {
+            foreach ($event->custom_fields as $field) {
+                if ($field['required'] ?? false) {
+                    $rules[$field['name']] = 'required';
+                }
+            }
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $data = $validator->validated();
+        $data['event_id'] = $event->id;
+        $data['registration_source'] = 'web';
+        
+        // Handle custom fields
+        if ($event->custom_fields) {
+            $customData = [];
+            foreach ($event->custom_fields as $field) {
+                if ($request->has($field['name'])) {
+                    $customData[$field['name']] = $request->input($field['name']);
+                }
+            }
+            $data['custom_data'] = $customData;
+        }
+
+        $attendee = Attendee::create($data);
+
+        // Generate QR code
+        $qrCode = $this->qrCodeService->generateQrCode($attendee);
+
+        // Send confirmation email (implement as needed)
+        // Mail::to($attendee->email)->send(new RegistrationConfirmation($attendee, $qrCode));
+
+        return response()->json([
+            'message' => 'Registration successful',
+            'attendee' => $attendee->load('qrCode'),
+            'qr_code_url' => url('storage/' . $qrCode->qr_code_image_path)
+        ], 201);
+    }
+
+    /**
+     * Store a newly created attendee (admin only)
+     */
+    public function store(Request $request, Event $event)
+    {
+        // Check if event is full
+        if ($event->isFull()) {
+            return response()->json(['error' => 'Event is full'], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:attendees,email,NULL,id,event_id,' . $event->id,
+            'phone' => 'nullable|string|max:20',
+            'company' => 'nullable|string|max:255',
+            'designation' => 'nullable|string|max:255',
+            'ticket_type' => 'nullable|string|max:100',
+            'custom_data' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $data = $validator->validated();
+        $data['event_id'] = $event->id;
+        $data['registration_source'] = 'admin';
+
+        $attendee = Attendee::create($data);
+
+        // Generate QR code
+        $qrCode = $this->qrCodeService->generateQrCode($attendee);
+
+        return response()->json([
+            'message' => 'Attendee created successfully',
+            'attendee' => $attendee->load('qrCode')
+        ], 201);
+    }
+
+    /**
+     * Display the specified attendee
+     */
+    public function show(Attendee $attendee)
+    {
+        return response()->json($attendee->load(['event', 'qrCode', 'checkedInBy']));
+    }
+
+    /**
+     * Update the specified attendee
+     */
+    public function update(Request $request, Attendee $attendee)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:attendees,email,' . $attendee->id . ',id,event_id,' . $attendee->event_id,
+            'phone' => 'nullable|string|max:20',
+            'company' => 'nullable|string|max:255',
+            'designation' => 'nullable|string|max:255',
+            'ticket_type' => 'nullable|string|max:100',
+            'custom_data' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $attendee->update($validator->validated());
+
+        return response()->json([
+            'message' => 'Attendee updated successfully',
+            'attendee' => $attendee->load('qrCode')
+        ]);
+    }
+
+    /**
+     * Remove the specified attendee
+     */
+    public function destroy(Attendee $attendee)
+    {
+        // Delete QR code file
+        if ($attendee->qrCode && Storage::disk('public')->exists($attendee->qrCode->qr_code_image_path)) {
+            Storage::disk('public')->delete($attendee->qrCode->qr_code_image_path);
+        }
+
+        $attendee->delete();
+
+        return response()->json(['message' => 'Attendee deleted successfully']);
+    }
+
+    /**
+     * Check in attendee
+     */
+    public function checkIn(Request $request, Attendee $attendee)
+    {
+        if ($attendee->is_checked_in) {
+            return response()->json(['error' => 'Attendee already checked in'], 422);
+        }
+
+        $attendee->checkIn(auth()->id());
+
+        return response()->json([
+            'message' => 'Attendee checked in successfully',
+            'attendee' => $attendee->load(['event', 'checkedInBy'])
+        ]);
+    }
+
+    /**
+     * Bulk import attendees from CSV/Excel
+     */
+    public function bulkImport(Request $request, Event $event)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|file|mimes:csv,xlsx,xls|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        try {
+            $spreadsheet = IOFactory::load($request->file('file')->getPathname());
+            $worksheet = $spreadsheet->getActiveSheet();
+            $rows = $worksheet->toArray();
+
+            // Assume first row is headers
+            $headers = array_shift($rows);
+            $imported = 0;
+            $errors = [];
+
+            foreach ($rows as $index => $row) {
+                $data = array_combine($headers, $row);
+                
+                // Skip empty rows
+                if (empty(array_filter($data))) {
+                    continue;
+                }
+
+                // Validate required fields
+                if (empty($data['name']) || empty($data['email'])) {
+                    $errors[] = "Row " . ($index + 2) . ": Name and email are required";
+                    continue;
+                }
+
+                // Check for duplicate email in event
+                if (Attendee::where('event_id', $event->id)->where('email', $data['email'])->exists()) {
+                    $errors[] = "Row " . ($index + 2) . ": Email already exists for this event";
+                    continue;
+                }
+
+                // Create attendee
+                $attendee = Attendee::create([
+                    'event_id' => $event->id,
+                    'name' => $data['name'] ?? '',
+                    'email' => $data['email'] ?? '',
+                    'phone' => $data['phone'] ?? null,
+                    'company' => $data['company'] ?? null,
+                    'designation' => $data['designation'] ?? null,
+                    'ticket_type' => $data['ticket_type'] ?? 'general',
+                    'registration_source' => 'import',
+                ]);
+
+                // Generate QR code
+                $this->qrCodeService->generateQrCode($attendee);
+                $imported++;
+            }
+
+            return response()->json([
+                'message' => "Successfully imported {$imported} attendees",
+                'imported' => $imported,
+                'errors' => $errors
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to process file: ' . $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Export attendees as CSV
+     */
+    /**
+     * Export attendees as CSV
+     */
+    public function export(Request $request)
+    {
+        try {
+            // Get all attendees with their event and check-in information
+            $attendees = Attendee::with(['event', 'checkedInBy'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            // Generate CSV content
+            $csvData = [];
+            
+            // CSV Headers
+            $csvData[] = [
+                'Registration ID',
+                'Name',
+                'Email', 
+                'Phone',
+                'Company',
+                'Designation',
+                'Ticket Type',
+                'Event',
+                'Registration Date',
+                'Check-in Status',
+                'Check-in Date',
+                'Checked-in By',
+                'Registration Source'
+            ];
+
+            // Add attendee data rows
+            foreach ($attendees as $attendee) {
+                $csvData[] = [
+                    $attendee->registration_id ?? '',
+                    $attendee->name ?? '',
+                    $attendee->email ?? '',
+                    $attendee->phone ?? '',
+                    $attendee->company ?? '',
+                    $attendee->designation ?? '',
+                    $attendee->ticket_type ?? '',
+                    $attendee->event->name ?? '',
+                    $attendee->created_at ? $attendee->created_at->format('Y-m-d H:i:s') : '',
+                    $attendee->is_checked_in ? 'Checked In' : 'Pending',
+                    $attendee->checked_in_at ? $attendee->checked_in_at->format('Y-m-d H:i:s') : '',
+                    $attendee->checkedInBy->name ?? '',
+                    $attendee->registration_source ?? ''
+                ];
+            }
+
+            // Convert to CSV string
+            $output = fopen('php://temp', 'w');
+            foreach ($csvData as $row) {
+                fputcsv($output, $row);
+            }
+            rewind($output);
+            $csvContent = stream_get_contents($output);
+            fclose($output);
+
+            $filename = 'attendees-export-' . date('Y-m-d') . '.csv';
+
+            return response($csvContent)
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+                ->header('Cache-Control', 'must-revalidate, post-check=0, pre-check=0')
+                ->header('Expires', '0')
+                ->header('Pragma', 'public');
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Export failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+
+}
