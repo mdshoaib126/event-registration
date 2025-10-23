@@ -52,6 +52,9 @@ class AuthService {
       });
     }
     
+    // Small delay to ensure data is properly stored
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     return data;
   }
 

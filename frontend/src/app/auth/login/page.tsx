@@ -23,19 +23,31 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await authService.login(data);
+      const response = await authService.login(data);
+      console.log('Login response:', response);
       
       // Wait a moment to ensure token is properly set
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Redirect based on user role
+      // Get user data after login
       const user = authService.getUser();
-      if (user?.role === 'admin') {
-        router.push('/admin');
+      console.log('User after login:', user);
+      
+      if (user) {
+        // Force page reload with redirect to ensure fresh state
+        if (user.role === 'admin') {
+          console.log('Redirecting to admin dashboard');
+          window.location.href = '/admin';
+        } else {
+          console.log('Redirecting to staff dashboard');
+          window.location.href = '/staff';
+        }
       } else {
-        router.push('/staff');
+        console.error('User data not found after login');
+        setError('Login successful but user data not found. Please try again.');
       }
     } catch (error: any) {
+      console.error('Login error:', error);
       setError(
         error.response?.data?.error || 
         error.response?.data?.message ||
