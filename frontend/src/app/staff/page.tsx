@@ -1,27 +1,46 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { QrCode, Camera, CheckCircle, X, AlertTriangle } from 'lucide-react';
 import attendeeService, { Attendee } from '@/lib/attendees';
+import authService from '@/lib/auth';
 import QrScanner from 'qr-scanner';
 
 interface ScanResult {
   success: boolean;
   message: string;
+  action?: 'check_in' | 'check_out' | 'already_checked_out';
   attendee?: Attendee;
   error?: string;
 }
 
+interface RecentScan {
+  attendee: Attendee;
+  scannedAt: string;
+  action: 'check_in' | 'check_out' | 'already_checked_out';
+}
+
 export default function StaffPage() {
+  const router = useRouter();
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [recentScans, setRecentScans] = useState<Attendee[]>([]);
+  const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [manualInput, setManualInput] = useState('');
   const [cameraAvailable, setCameraAvailable] = useState<boolean | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScanner | null>(null);
+
+  useEffect(() => {
+    // Check if user is staff or admin
+    const user = authService.getUser();
+    if (!user || (user.role !== 'event_staff' && user.role !== 'admin')) {
+      router.push('/auth/login');
+      return;
+    }
+  }, [router]);
 
   const startScanning = async () => {
     console.log('Start scanning clicked...');
@@ -155,11 +174,16 @@ export default function StaffPage() {
       setScanResult({
         success: true,
         message: result.message,
+        action: result.action,
         attendee: result.attendee
       });
 
       // Add to recent scans
-      setRecentScans(prev => [result.attendee, ...prev.slice(0, 9)]);
+      setRecentScans(prev => [{
+        attendee: result.attendee,
+        scannedAt: new Date().toISOString(),
+        action: result.action || 'check_in'
+      }, ...prev.slice(0, 9)]);
       
       // Resume scanning after 2 seconds
       setTimeout(() => {
@@ -192,11 +216,16 @@ export default function StaffPage() {
       setScanResult({
         success: true,
         message: result.message,
+        action: result.action,
         attendee: result.attendee
       });
 
       // Add to recent scans
-      setRecentScans(prev => [result.attendee, ...prev.slice(0, 9)]);
+      setRecentScans(prev => [{
+        attendee: result.attendee,
+        scannedAt: new Date().toISOString(),
+        action: result.action || 'check_in'
+      }, ...prev.slice(0, 9)]);
       
       // Auto-clear result after 3 seconds
       setTimeout(() => setScanResult(null), 3000);
@@ -269,8 +298,56 @@ export default function StaffPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">QR Code Scanner</h1>
-          <p className="text-gray-600">Scan attendee QR codes for event check-in</p>
+          <h1 className="text-2xl font-bold text-gray-900">Staff Dashboard</h1>
+          <p className="text-gray-600">Event check-in and attendee management</p>
+        </div>
+
+        {/* Staff Dashboard Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-500">
+                <CheckCircle className="w-6 h-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Today's Check-ins</p>
+                <p className="text-2xl font-semibold text-gray-900">{recentScans.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-500">
+                <QrCode className="w-6 h-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Scanner Status</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {cameraAvailable ? 'Camera Ready' : 'Manual Mode'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-500">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Quick Actions</p>
+                <p className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
+                  Start Check-in
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* QR Scanner Section */}
+        <div>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">QR Code Check-in</h2>
         </div>
 
         {/* Scanner Section */}
@@ -431,23 +508,42 @@ export default function StaffPage() {
             {scanResult ? (
               <div className={`p-4 rounded-lg ${
                 scanResult.success 
-                  ? 'bg-green-50 border border-green-200' 
+                  ? scanResult.action === 'check_out' 
+                    ? 'bg-blue-50 border border-blue-200'
+                    : 'bg-green-50 border border-green-200'
                   : 'bg-red-50 border border-red-200'
               }`}>
                 <div className="flex">
                   {scanResult.success ? (
-                    <CheckCircle className="h-5 w-5 text-green-400" />
+                    <CheckCircle className={`h-5 w-5 ${
+                      scanResult.action === 'check_out' ? 'text-blue-400' : 'text-green-400'
+                    }`} />
                   ) : (
                     <AlertTriangle className="h-5 w-5 text-red-400" />
                   )}
                   <div className="ml-3">
                     <h3 className={`text-sm font-medium ${
-                      scanResult.success ? 'text-green-800' : 'text-red-800'
+                      scanResult.success 
+                        ? scanResult.action === 'check_out'
+                          ? 'text-blue-800'
+                          : 'text-green-800'
+                        : 'text-red-800'
                     }`}>
-                      {scanResult.success ? 'Check-in Successful' : 'Check-in Failed'}
+                      {scanResult.success 
+                        ? scanResult.action === 'check_in' 
+                          ? 'Check-in Successful'
+                          : scanResult.action === 'check_out'
+                          ? 'Check-out Successful'
+                          : 'Already Checked Out'
+                        : 'Scan Failed'
+                      }
                     </h3>
                     <p className={`mt-1 text-sm ${
-                      scanResult.success ? 'text-green-700' : 'text-red-700'
+                      scanResult.success 
+                        ? scanResult.action === 'check_out'
+                          ? 'text-blue-700'
+                          : 'text-green-700'
+                        : 'text-red-700'
                     }`}>
                       {scanResult.message}
                     </p>
@@ -456,8 +552,9 @@ export default function StaffPage() {
                       <div className="mt-3 text-sm text-gray-900">
                         <p><strong>Name:</strong> {scanResult.attendee.name}</p>
                         <p><strong>Email:</strong> {scanResult.attendee.email}</p>
-                        <p><strong>Company:</strong> {scanResult.attendee.company || 'N/A'}</p>
-                        <p><strong>Ticket:</strong> {scanResult.attendee.ticket_type}</p>
+                        {scanResult.attendee.phone && (
+                          <p><strong>Phone:</strong> {scanResult.attendee.phone}</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -478,31 +575,46 @@ export default function StaffPage() {
         {recentScans.length > 0 && (
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Recent Check-ins</h2>
+              <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
             </div>
             <div className="divide-y divide-gray-200">
-              {recentScans.map((attendee) => (
-                <div key={attendee.id} className="px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900">{attendee.name}</h3>
-                      <p className="text-sm text-gray-500">{attendee.email}</p>
-                      {attendee.company && (
-                        <p className="text-sm text-gray-500">{attendee.company}</p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Checked In
-                      </span>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {attendee.checked_in_at && new Date(attendee.checked_in_at).toLocaleTimeString()}
-                      </p>
+              {recentScans.map((scan, index) => {
+                const getAttendanceStatus = () => {
+                  if (!scan.attendee.is_checked_in) {
+                    return { label: 'Not Checked In', color: 'gray', icon: X };
+                  } else if (scan.attendee.is_checked_in && !scan.attendee.checked_out_at) {
+                    return { label: 'Present', color: 'green', icon: CheckCircle };
+                  } else {
+                    return { label: 'Checked Out', color: 'blue', icon: CheckCircle };
+                  }
+                };
+                
+                const status = getAttendanceStatus();
+                const StatusIcon = status.icon;
+                
+                return (
+                  <div key={`${scan.attendee.id}-${index}-${scan.scannedAt}`} className="px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">{scan.attendee.name}</h3>
+                        <p className="text-sm text-gray-500">{scan.attendee.email}</p>
+                        {scan.attendee.phone && (
+                          <p className="text-sm text-gray-500">{scan.attendee.phone}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${status.color}-100 text-${status.color}-800`}>
+                          <StatusIcon className="w-3 h-3 mr-1" />
+                          {status.label}
+                        </span>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {scan.attendee.checked_in_at && new Date(scan.attendee.checked_in_at).toLocaleTimeString()}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { Calendar, Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import eventService, { Event } from '@/lib/events';
+import authService from '@/lib/auth';
 
 interface DashboardStats {
   totalEvents: number;
@@ -18,6 +20,7 @@ interface RecentEvent extends Event {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>({
     totalEvents: 0,
     activeEvents: 0,
@@ -28,6 +31,13 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Check if user is admin
+    const user = authService.getUser();
+    if (!user || user.role !== 'admin') {
+      router.push('/staff');
+      return;
+    }
+
     const loadDashboardData = async () => {
       try {
         // Load recent events
@@ -55,7 +65,7 @@ export default function AdminDashboard() {
     };
 
     loadDashboardData();
-  }, []);
+  }, [router]);
 
   const statCards = [
     {

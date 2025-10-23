@@ -46,8 +46,6 @@ class QrCodeService
             'event_id' => $attendee->event_id,
             'name' => $attendee->name,
             'email' => $attendee->email,
-            'company' => $attendee->company,
-            'ticket_type' => $attendee->ticket_type,
             'timestamp' => now()->timestamp,
             'hash' => hash('sha256', $attendee->id . $attendee->registration_id . config('app.key')),
         ];

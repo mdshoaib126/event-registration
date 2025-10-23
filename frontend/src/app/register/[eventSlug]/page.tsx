@@ -239,98 +239,95 @@ export default function EventRegistrationPage() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    {...register('name', { required: 'Name is required' })}
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your full name"
-                  />
-                  {errors.name && (
-                    <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-                  )}
+              {/* Default Fields based on Event Configuration */}
+              {event.default_fields && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {Object.entries(event.default_fields).map(([fieldName, fieldConfig]) => {
+                    const isRequired = fieldConfig.required;
+                    const fieldLabel = fieldConfig.label;
+                    
+                    return (
+                      <div key={fieldName}>
+                        <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
+                          {fieldLabel} {isRequired && '*'}
+                        </label>
+                        <input
+                          {...register(fieldName, {
+                            required: isRequired ? `${fieldLabel} is required` : false,
+                            ...(fieldName === 'email' && {
+                              pattern: {
+                                value: /^\S+@\S+$/i,
+                                message: 'Invalid email address',
+                              },
+                            }),
+                          })}
+                          type={fieldName === 'email' ? 'email' : fieldName === 'phone' ? 'tel' : 'text'}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder={`Enter your ${fieldLabel.toLowerCase()}`}
+                        />
+                        {errors[fieldName] && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {(errors[fieldName] as any)?.message}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+              )}
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address *
-                  </label>
-                  <input
-                    {...register('email', {
-                      required: 'Email is required',
-                      pattern: {
-                        value: /^\S+@\S+$/i,
-                        message: 'Invalid email address',
-                      },
-                    })}
-                    type="email"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your email address"
-                  />
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-                  )}
-                </div>
+              {/* Fallback to basic fields if no default_fields configured */}
+              {!event.default_fields && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                      Full Name *
+                    </label>
+                    <input
+                      {...register('name', { required: 'Name is required' })}
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter your full name"
+                    />
+                    {errors.name && (
+                      <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                    )}
+                  </div>
 
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    {...register('phone')}
-                    type="tel"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your phone number"
-                  />
-                </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address *
+                    </label>
+                    <input
+                      {...register('email', {
+                        required: 'Email is required',
+                        pattern: {
+                          value: /^\S+@\S+$/i,
+                          message: 'Invalid email address',
+                        },
+                      })}
+                      type="email"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter your email address"
+                    />
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                    )}
+                  </div>
 
-                <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
-                    Company/Organization
-                  </label>
-                  <input
-                    {...register('company')}
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your company name"
-                  />
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <input
+                      {...register('phone')}
+                      type="tel"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
                 </div>
-
-                <div>
-                  <label htmlFor="designation" className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Title/Designation
-                  </label>
-                  <input
-                    {...register('designation')}
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your job title"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="ticket_type" className="block text-sm font-medium text-gray-700 mb-2">
-                    Ticket Type *
-                  </label>
-                  <select
-                    {...register('ticket_type', { required: 'Ticket type is required' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select ticket type</option>
-                    <option value="general">General Admission</option>
-                    <option value="vip">VIP</option>
-                    <option value="student">Student</option>
-                    <option value="corporate">Corporate</option>
-                  </select>
-                  {errors.ticket_type && (
-                    <p className="mt-1 text-sm text-red-600">{errors.ticket_type.message}</p>
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* Custom Fields (if any) */}
               {(() => {

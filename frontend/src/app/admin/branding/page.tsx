@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { Upload, Save, RefreshCw, Eye } from 'lucide-react';
+import authService from '@/lib/auth';
 
 export default function BrandingPage() {
+  const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     company_name: 'Event Registration System',
@@ -15,6 +18,15 @@ export default function BrandingPage() {
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
+
+  useEffect(() => {
+    // Check if user is admin
+    const user = authService.getUser();
+    if (!user || user.role !== 'admin') {
+      router.push('/staff');
+      return;
+    }
+  }, [router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

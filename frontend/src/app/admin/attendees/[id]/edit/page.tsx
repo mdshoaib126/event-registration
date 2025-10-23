@@ -14,9 +14,6 @@ export default function EditAttendeePage() {
     name: '',
     email: '',
     phone: '',
-    company: '',
-    designation: '',
-    ticket_type: 'General',
   });
   
   const router = useRouter();
@@ -39,9 +36,6 @@ export default function EditAttendeePage() {
         name: response.name,
         email: response.email,
         phone: response.phone || '',
-        company: response.company || '',
-        designation: response.designation || '',
-        ticket_type: response.ticket_type,
       });
     } catch (error) {
       console.error('Failed to load attendee:', error);
@@ -166,57 +160,6 @@ export default function EditAttendeePage() {
                     onChange={handleInputChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter phone number"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="ticket_type" className="block text-sm font-medium text-gray-700 mb-2">
-                    Ticket Type *
-                  </label>
-                  <select
-                    id="ticket_type"
-                    name="ticket_type"
-                    value={formData.ticket_type}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="General">General</option>
-                    <option value="VIP">VIP</option>
-                    <option value="Student">Student</option>
-                    <option value="Speaker">Speaker</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
-                    Company/Organization
-                  </label>
-                  <input
-                    type="text"
-                    id="company"
-                    name="company"
-                    value={formData.company}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter company name"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="designation" className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Title/Designation
-                  </label>
-                  <input
-                    type="text"
-                    id="designation"
-                    name="designation"
-                    value={formData.designation}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter job title"
                   />
                 </div>
               </div>

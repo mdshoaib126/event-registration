@@ -7,14 +7,13 @@ export interface Attendee {
   name: string;
   email: string;
   phone?: string;
-  company?: string;
-  designation?: string;
-  ticket_type: string;
   custom_data?: Record<string, any>;
   registration_source: 'web' | 'admin' | 'import';
   is_checked_in: boolean;
   checked_in_at?: string;
   checked_in_by?: number;
+  checked_out_at?: string;
+  checked_out_by?: number;
   created_at: string;
   updated_at: string;
   event?: {
@@ -30,16 +29,17 @@ export interface Attendee {
     id: number;
     name: string;
   };
+  checked_out_by_user?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface RegisterAttendeeData {
-  name: string;
-  email: string;
+  name?: string;
+  email?: string;
   phone?: string;
-  company?: string;
-  designation?: string;
-  ticket_type: string;
-  [key: string]: any; // For custom fields
+  [key: string]: any; // For custom fields and dynamic default fields
 }
 
 export interface CreateAttendeeData extends RegisterAttendeeData {
@@ -49,7 +49,6 @@ export interface CreateAttendeeData extends RegisterAttendeeData {
 class AttendeeService {
   async getAttendees(eventId: number, params?: {
     checked_in?: boolean;
-    ticket_type?: string;
     search?: string;
     page?: number;
   }): Promise<{
@@ -123,11 +122,22 @@ class AttendeeService {
 
   async scanQrCode(qrData: string): Promise<{
     message: string;
+    action: 'check_in' | 'check_out' | 'already_checked_out';
     attendee: Attendee;
-    checked_in_at: string;
+    checked_in_at?: string;
+    checked_out_at?: string;
   }> {
-    const response = await api.post('/qr-codes/scan', { qr_data: qrData });
-    return response.data;
+    try {
+      const response = await api.post('/qr-codes/scan', { qr_data: qrData });
+      return response.data;
+    } catch (error: any) {
+      // Handle 422 status code for "already checked out" - this is a valid response
+      if (error.response?.status === 422 && error.response?.data?.action === 'already_checked_out') {
+        return error.response.data;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async downloadQrCode(qrCodeId: number): Promise<Blob> {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLayout from '@/components/layout/AdminLayout';
-import { ArrowLeft, Edit, Download, QrCode, CheckCircle, XCircle, Calendar, Mail, Phone, Building, User, Clock, MapPin } from 'lucide-react';
+import { ArrowLeft, Edit, Download, QrCode, CheckCircle, XCircle, Calendar, Mail, Phone, Clock, MapPin } from 'lucide-react';
 import attendeeService, { Attendee } from '@/lib/attendees';
 import eventService, { Event } from '@/lib/events';
 
@@ -186,14 +186,6 @@ export default function AttendeeDetailsPage() {
                 }`}>
                   {attendee.is_checked_in ? 'Checked In' : 'Pending Check-in'}
                 </span>
-                <span className={`px-2 py-1 text-sm font-medium rounded-full ${
-                  attendee.ticket_type === 'VIP' ? 'bg-purple-100 text-purple-800' :
-                  attendee.ticket_type === 'Speaker' ? 'bg-blue-100 text-blue-800' :
-                  attendee.ticket_type === 'Student' ? 'bg-green-100 text-green-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {attendee.ticket_type}
-                </span>
               </div>
             </div>
           </div>
@@ -266,7 +258,7 @@ export default function AttendeeDetailsPage() {
               
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="flex items-center gap-3">
-                  <User className="text-gray-400" size={20} />
+                  <Mail className="text-gray-400" size={20} />
                   <div>
                     <p className="text-sm text-gray-500">Full Name</p>
                     <p className="font-medium">{attendee.name}</p>
@@ -287,26 +279,6 @@ export default function AttendeeDetailsPage() {
                     <div>
                       <p className="text-sm text-gray-500">Phone</p>
                       <p className="font-medium">{attendee.phone}</p>
-                    </div>
-                  </div>
-                )}
-
-                {attendee.company && (
-                  <div className="flex items-center gap-3">
-                    <Building className="text-gray-400" size={20} />
-                    <div>
-                      <p className="text-sm text-gray-500">Company</p>
-                      <p className="font-medium">{attendee.company}</p>
-                    </div>
-                  </div>
-                )}
-
-                {attendee.designation && (
-                  <div className="flex items-center gap-3">
-                    <User className="text-gray-400" size={20} />
-                    <div>
-                      <p className="text-sm text-gray-500">Designation</p>
-                      <p className="font-medium">{attendee.designation}</p>
                     </div>
                   </div>
                 )}

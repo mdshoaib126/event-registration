@@ -21,16 +21,33 @@ A comprehensive event management platform with Laravel backend and Next.js front
 - **QR Generation**: Endroid QR Code library
 - **File Storage**: Local storage for logos and QR codes
 
-## ⚙️ Installation & Setup
+## ⚙️ Quick Installation
+
+### Automatic Setup
+
+**Windows Users:**
+```bash
+# Run the installer
+install.bat
+```
+
+**Linux/Mac Users:**
+```bash
+# Make installer executable and run
+chmod +x install.sh
+./install.sh
+```
 
 ### Prerequisites
-- PHP 8.2+
+- PHP 8.2+ with extensions (BCMath, Ctype, Fileinfo, JSON, Mbstring, OpenSSL, PDO, Tokenizer, XML)
 - Composer
 - Node.js 18+ 
 - NPM/Yarn
-- MySQL
+- MySQL/PostgreSQL
 
-### Backend Setup (Laravel)
+### Manual Installation
+
+#### Backend Setup (Laravel)
 
 1. Navigate to backend directory:
    ```bash
@@ -45,7 +62,9 @@ A comprehensive event management platform with Laravel backend and Next.js front
 3. Configure environment:
    ```bash
    cp .env.example .env
-   # Update database credentials in .env
+   # Or use the configuration helper:
+   # Windows: configure.bat
+   # Linux/Mac: ./configure.sh
    ```
 
 4. Generate application key:
@@ -53,13 +72,18 @@ A comprehensive event management platform with Laravel backend and Next.js front
    php artisan key:generate
    ```
 
-5. Run migrations and seed data:
+5. Create storage link:
+   ```bash
+   php artisan storage:link
+   ```
+
+6. Run migrations and seed data:
    ```bash
    php artisan migrate
    php artisan db:seed --class=AdminUserSeeder
    ```
 
-6. Start Laravel server:
+7. Start Laravel server:
    ```bash
    php artisan serve
    ```
@@ -79,8 +103,8 @@ A comprehensive event management platform with Laravel backend and Next.js front
 
 3. Configure environment:
    ```bash
-   # Update .env.local with correct API URLs
-   NEXT_PUBLIC_API_URL=http://localhost:8000/api
+   cp .env.example .env.local
+   # Update API URL if needed
    NEXT_PUBLIC_STORAGE_URL=http://localhost:8000/storage
    ```
 

@@ -19,6 +19,11 @@ export default function CreateEventPage() {
     custom_fields: [],
   });
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [defaultFields, setDefaultFields] = useState({
+    name: { required: true, label: 'Full Name' },
+    email: { required: true, label: 'Email Address' },
+    phone: { required: false, label: 'Phone Number' }
+  });
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
@@ -38,6 +43,16 @@ export default function CreateEventPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) setLogoFile(file);
+  };
+
+  const handleDefaultFieldChange = (fieldName: string, property: string, value: boolean | string) => {
+    setDefaultFields(prev => ({
+      ...prev,
+      [fieldName]: {
+        ...prev[fieldName as keyof typeof prev],
+        [property]: value
+      }
+    }));
   };
 
   const addCustomField = () => {
@@ -74,6 +89,7 @@ export default function CreateEventPage() {
       const eventData: CreateEventData = {
         ...formData,
         custom_fields: customFields,
+        default_fields: defaultFields,
         banner: bannerFile || undefined,
         event_logo: logoFile || undefined,
       };
@@ -223,10 +239,50 @@ export default function CreateEventPage() {
                 </div>
               </div>
 
+              {/* Default Fields Configuration */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Default Registration Fields</h2>
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Configure the default registration fields. Company, designation, and ticket type can be added as custom fields if needed.
+                  </p>
+                  
+                  {Object.entries(defaultFields).map(([fieldName, fieldConfig]) => (
+                    <div key={fieldName} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Field Label
+                        </label>
+                        <input
+                          type="text"
+                          value={fieldConfig.label}
+                          onChange={(e) => handleDefaultFieldChange(fieldName, 'label', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder={`Enter label for ${fieldName} field`}
+                        />
+                      </div>
+                      
+                      <div className="ml-6 flex items-center">
+                        <input
+                          type="checkbox"
+                          id={`required-${fieldName}`}
+                          checked={fieldConfig.required}
+                          onChange={(e) => handleDefaultFieldChange(fieldName, 'required', e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <label htmlFor={`required-${fieldName}`} className="ml-2 text-sm text-gray-700">
+                          Required
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Custom Fields */}
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Registration Fields</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Additional Custom Fields</h2>
                   <button
                     type="button"
                     onClick={addCustomField}
@@ -239,7 +295,7 @@ export default function CreateEventPage() {
 
                 {customFields.length === 0 ? (
                   <p className="text-gray-500 text-center py-4">
-                    No custom fields added. Standard fields (Name, Email) are included by default.
+                    No additional custom fields added. Default fields (Name, Email, Phone) are configured above.
                   </p>
                 ) : (
                   <div className="space-y-4">

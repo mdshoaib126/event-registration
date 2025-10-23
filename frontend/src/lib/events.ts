@@ -11,6 +11,11 @@ export interface Event {
   banner?: string;
   event_logo?: string;
   custom_fields?: CustomField[];
+  default_fields?: {
+    name: { required: boolean; label: string };
+    email: { required: boolean; label: string };
+    phone: { required: boolean; label: string };
+  };
   is_active: boolean;
   status: 'draft' | 'published' | 'closed';
   max_attendees?: number;
@@ -42,6 +47,11 @@ export interface CreateEventData {
   event_time: string;
   max_attendees?: number;
   custom_fields?: CustomField[];
+  default_fields?: {
+    name: { required: boolean; label: string };
+    email: { required: boolean; label: string };
+    phone: { required: boolean; label: string };
+  };
   banner?: File;
   event_logo?: File;
 }
@@ -151,8 +161,6 @@ class EventService {
   }
 
   async generateReport(id: number, filters?: {
-    ticket_type?: string;
-    company?: string;
     checked_in?: boolean;
   }): Promise<{
     event: Event;
@@ -160,8 +168,6 @@ class EventService {
       total_registered: number;
       checked_in: number;
       not_checked_in: number;
-      by_ticket_type: Record<string, number>;
-      by_company: Record<string, number>;
     };
     attendees: any[];
   }> {
@@ -170,8 +176,6 @@ class EventService {
   }
 
   async exportData(id: number, format: 'csv' | 'xlsx', filters?: {
-    ticket_type?: string;
-    company?: string;
     checked_in?: boolean;
   }): Promise<Blob> {
     const response = await api.get(`/events/${id}/export/${format}`, {

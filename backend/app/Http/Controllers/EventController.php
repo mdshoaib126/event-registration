@@ -206,14 +206,6 @@ class EventController extends Controller
         $query = $event->attendees();
 
         // Apply filters
-        if ($request->has('ticket_type')) {
-            $query->where('ticket_type', $request->ticket_type);
-        }
-
-        if ($request->has('company')) {
-            $query->where('company', 'like', '%' . $request->company . '%');
-        }
-
         if ($request->has('checked_in')) {
             $query->where('is_checked_in', $request->boolean('checked_in'));
         }
@@ -226,8 +218,6 @@ class EventController extends Controller
                 'total_registered' => $attendees->count(),
                 'checked_in' => $attendees->where('is_checked_in', true)->count(),
                 'not_checked_in' => $attendees->where('is_checked_in', false)->count(),
-                'by_ticket_type' => $attendees->groupBy('ticket_type')->map->count(),
-                'by_company' => $attendees->whereNotNull('company')->groupBy('company')->map->count(),
             ],
             'attendees' => $attendees
         ]);
@@ -241,12 +231,8 @@ class EventController extends Controller
         $query = $event->attendees();
 
         // Apply filters (same as generateReport)
-        if ($request->has('ticket_type')) {
-            $query->where('ticket_type', $request->ticket_type);
-        }
-
-        if ($request->has('company')) {
-            $query->where('company', 'like', '%' . $request->company . '%');
+        if ($request->has('checked_in')) {
+            $query->where('is_checked_in', $request->boolean('checked_in'));
         }
 
         if ($request->has('checked_in')) {
@@ -260,8 +246,7 @@ class EventController extends Controller
 
         // Headers
         $headers = [
-            'Registration ID', 'Name', 'Email', 'Phone', 'Company', 
-            'Designation', 'Ticket Type', 'Registration Source', 
+            'Registration ID', 'Name', 'Email', 'Phone', 'Registration Source', 
             'Checked In', 'Checked In At', 'Registration Date'
         ];
 
@@ -275,9 +260,6 @@ class EventController extends Controller
                 $attendee->name,
                 $attendee->email,
                 $attendee->phone,
-                $attendee->company,
-                $attendee->designation,
-                $attendee->ticket_type,
                 $attendee->registration_source,
                 $attendee->is_checked_in ? 'Yes' : 'No',
                 $attendee->checked_in_at ? $attendee->checked_in_at->format('Y-m-d H:i:s') : '',

@@ -16,20 +16,20 @@ class Attendee extends Model
         'name',
         'email',
         'phone',
-        'company',
-        'designation',
-        'ticket_type',
         'custom_data',
         'registration_source',
         'is_checked_in',
         'checked_in_at',
         'checked_in_by',
+        'checked_out_at',
+        'checked_out_by',
     ];
 
     protected $casts = [
         'custom_data' => 'array',
         'is_checked_in' => 'boolean',
         'checked_in_at' => 'datetime',
+        'checked_out_at' => 'datetime',
     ];
 
     /**
@@ -63,6 +63,14 @@ class Attendee extends Model
     }
 
     /**
+     * The user who checked out this attendee
+     */
+    public function checkedOutBy()
+    {
+        return $this->belongsTo(User::class, 'checked_out_by');
+    }
+
+    /**
      * QR code for this attendee
      */
     public function qrCode()
@@ -80,6 +88,39 @@ class Attendee extends Model
             'checked_in_at' => now(),
             'checked_in_by' => $checkedInBy,
         ]);
+    }
+
+    /**
+     * Check out the attendee
+     */
+    public function checkOut($checkedOutBy = null)
+    {
+        $this->update([
+            'checked_out_at' => now(),
+            'checked_out_by' => $checkedOutBy,
+        ]);
+    }
+
+    /**
+     * Get the current attendance status
+     */
+    public function getAttendanceStatusAttribute()
+    {
+        if (!$this->is_checked_in) {
+            return 'not_checked_in';
+        } elseif ($this->is_checked_in && !$this->checked_out_at) {
+            return 'checked_in';
+        } else {
+            return 'checked_out';
+        }
+    }
+
+    /**
+     * Check if attendee is currently present (checked in but not checked out)
+     */
+    public function getIsCurrentlyPresentAttribute()
+    {
+        return $this->is_checked_in && !$this->checked_out_at;
     }
 
     /**

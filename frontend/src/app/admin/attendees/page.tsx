@@ -6,6 +6,7 @@ import AdminLayout from '@/components/layout/AdminLayout';
 import { Search, Filter, Download, Upload, UserPlus, CheckCircle, XCircle, Calendar, Mail, Phone } from 'lucide-react';
 import attendeeService, { Attendee } from '@/lib/attendees';
 import eventService, { Event } from '@/lib/events';
+import authService from '@/lib/auth';
 
 export default function AttendeesPage() {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
@@ -19,8 +20,15 @@ export default function AttendeesPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Check if user is admin
+    const user = authService.getUser();
+    if (!user || user.role !== 'admin') {
+      router.push('/staff');
+      return;
+    }
+    
     loadEvents();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (events.length > 0) {
@@ -90,7 +98,8 @@ export default function AttendeesPage() {
 
       if (statusFilter !== 'all') {
         filtered = filtered.filter(attendee => {
-          if (statusFilter === 'checked-in') return attendee.checked_in_at;
+          if (statusFilter === 'checked-in') return attendee.checked_in_at && !attendee.checked_out_at;
+          if (statusFilter === 'checked-out') return attendee.checked_out_at;
           if (statusFilter === 'pending') return !attendee.checked_in_at;
           return true;
         });
@@ -229,7 +238,14 @@ export default function AttendeesPage() {
   };
 
   const getStatusBadge = (attendee: Attendee) => {
-    if (attendee.checked_in_at) {
+    if (attendee.checked_out_at) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <CheckCircle size={12} className="mr-1" />
+          Checked Out
+        </span>
+      );
+    } else if (attendee.checked_in_at) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
           <CheckCircle size={12} className="mr-1" />
@@ -320,6 +336,7 @@ export default function AttendeesPage() {
             >
               <option value="all">All Status</option>
               <option value="checked-in">Checked In</option>
+              <option value="checked-out">Checked Out</option>
               <option value="pending">Pending</option>
             </select>
 

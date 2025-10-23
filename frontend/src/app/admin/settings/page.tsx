@@ -1,12 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { Settings, Save, User, Shield, Bell, Database } from 'lucide-react';
+import authService from '@/lib/auth';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('general');
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    // Check if user is admin
+    const user = authService.getUser();
+    if (!user || user.role !== 'admin') {
+      router.push('/staff');
+      return;
+    }
+  }, [router]);
 
   const tabs = [
     { id: 'general', name: 'General', icon: Settings },

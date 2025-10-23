@@ -19,7 +19,7 @@ class QrCodeController extends Controller
     }
 
     /**
-     * Scan QR code for check-in
+     * Scan QR code for check-in/check-out
      */
     public function scan(Request $request)
     {
@@ -48,7 +48,7 @@ class QrCodeController extends Controller
         \Log::info('QR validation successful', $qrData);
 
         // Find attendee
-        $attendee = Attendee::with(['event', 'qrCode'])
+        $attendee = Attendee::with(['event', 'qrCode', 'checkedInBy', 'checkedOutBy'])
             ->where('id', $qrData['attendee_id'])
             ->where('registration_id', $qrData['registration_id'])
             ->first();
@@ -57,29 +57,46 @@ class QrCodeController extends Controller
             return response()->json(['error' => 'Attendee not found'], 404);
         }
 
-        // Check if already checked in
-        if ($attendee->is_checked_in) {
+        // Determine the action based on current status
+        if (!$attendee->is_checked_in) {
+            // First scan: Check-in
+            $attendee->checkIn(auth()->id());
+            
+            // Mark QR code as used
+            if ($attendee->qrCode) {
+                $attendee->qrCode->markAsUsed();
+            }
+
             return response()->json([
-                'error' => 'Attendee already checked in',
-                'attendee' => $attendee,
+                'message' => 'Check-in successful',
+                'action' => 'check_in',
+                'attendee' => $attendee->load(['event', 'checkedInBy']),
+                'checked_in_at' => $attendee->fresh()->checked_in_at
+            ]);
+
+        } elseif ($attendee->is_checked_in && !$attendee->checked_out_at) {
+            // Second scan: Check-out
+            $attendee->checkOut(auth()->id());
+
+            return response()->json([
+                'message' => 'Check-out successful',
+                'action' => 'check_out', 
+                'attendee' => $attendee->load(['event', 'checkedInBy', 'checkedOutBy']),
+                'checked_out_at' => $attendee->fresh()->checked_out_at
+            ]);
+
+        } else {
+            // Already checked out - show status
+            return response()->json([
+                'message' => 'Attendee already checked out',
+                'action' => 'already_checked_out',
+                'attendee' => $attendee->load(['event', 'checkedInBy', 'checkedOutBy']),
                 'checked_in_at' => $attendee->checked_in_at,
-                'checked_in_by' => $attendee->checkedInBy->name ?? 'Unknown'
+                'checked_out_at' => $attendee->checked_out_at,
+                'checked_in_by' => $attendee->checkedInBy->name ?? 'Unknown',
+                'checked_out_by' => $attendee->checkedOutBy->name ?? 'Unknown'
             ], 422);
         }
-
-        // Check in the attendee
-        $attendee->checkIn(auth()->id());
-
-        // Mark QR code as used
-        if ($attendee->qrCode) {
-            $attendee->qrCode->markAsUsed();
-        }
-
-        return response()->json([
-            'message' => 'Check-in successful',
-            'attendee' => $attendee->load(['event', 'checkedInBy']),
-            'checked_in_at' => $attendee->fresh()->checked_in_at
-        ]);
     }
 
     /**

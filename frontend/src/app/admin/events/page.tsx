@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { Plus, Edit, Trash2, Users, Calendar, Globe, Eye, ExternalLink, Copy, Check } from 'lucide-react';
 import eventService, { Event } from '@/lib/events';
+import authService from '@/lib/auth';
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -13,6 +14,17 @@ export default function EventsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [copiedEventId, setCopiedEventId] = useState<number | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is admin
+    const user = authService.getUser();
+    if (!user || user.role !== 'admin') {
+      router.push('/staff');
+      return;
+    }
+    
+    loadEvents();
+  }, [router]);
 
   const getRegistrationUrl = (event: Event) => {
     return `${window.location.origin}/register/${event.slug}`;
@@ -44,7 +56,11 @@ export default function EventsPage() {
   };
 
   useEffect(() => {
-    loadEvents();
+    // Only load events if user is authenticated and admin
+    const user = authService.getUser();
+    if (user && user.role === 'admin') {
+      loadEvents();
+    }
   }, [currentPage]);
 
   const loadEvents = async () => {

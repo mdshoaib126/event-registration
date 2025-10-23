@@ -33,18 +33,13 @@ class AttendeeController extends Controller
             $query->where('is_checked_in', $request->boolean('checked_in'));
         }
 
-        // Filter by ticket type
-        if ($request->has('ticket_type')) {
-            $query->where('ticket_type', $request->ticket_type);
-        }
-
-        // Search by name or email
+        // Search by name, email, or phone
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('company', 'like', "%{$search}%");
+                  ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
@@ -68,15 +63,34 @@ class AttendeeController extends Controller
             return response()->json(['error' => 'Event is full'], 422);
         }
 
-        // Validate based on event custom fields
-        $rules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:attendees,email,NULL,id,event_id,' . $event->id,
-            'phone' => 'nullable|string|max:20',
-            'company' => 'nullable|string|max:255',
-            'designation' => 'nullable|string|max:255',
-            'ticket_type' => 'nullable|string|max:100',
-        ];
+        // Build validation rules based on event configuration
+        $rules = [];
+        
+        // Add rules for default fields
+        if ($event->default_fields) {
+            foreach ($event->default_fields as $fieldName => $fieldConfig) {
+                $rule = $fieldConfig['required'] ? 'required' : 'nullable';
+                
+                switch ($fieldName) {
+                    case 'name':
+                        $rules['name'] = $rule . '|string|max:255';
+                        break;
+                    case 'email':
+                        $rules['email'] = $rule . '|email|unique:attendees,email,NULL,id,event_id,' . $event->id;
+                        break;
+                    case 'phone':
+                        $rules['phone'] = $rule . '|string|max:20';
+                        break;
+                }
+            }
+        } else {
+            // Fallback to default rules if no default_fields configured
+            $rules = [
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:attendees,email,NULL,id,event_id,' . $event->id,
+                'phone' => 'nullable|string|max:20',
+            ];
+        }
 
         // Add validation for custom fields
         if ($event->custom_fields) {
@@ -133,15 +147,39 @@ class AttendeeController extends Controller
             return response()->json(['error' => 'Event is full'], 422);
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:attendees,email,NULL,id,event_id,' . $event->id,
-            'phone' => 'nullable|string|max:20',
-            'company' => 'nullable|string|max:255',
-            'designation' => 'nullable|string|max:255',
-            'ticket_type' => 'nullable|string|max:100',
-            'custom_data' => 'nullable|array',
-        ]);
+        // Build validation rules based on event configuration
+        $rules = [];
+        
+        // Add rules for default fields
+        if ($event->default_fields) {
+            foreach ($event->default_fields as $fieldName => $fieldConfig) {
+                $rule = $fieldConfig['required'] ? 'required' : 'nullable';
+                
+                switch ($fieldName) {
+                    case 'name':
+                        $rules['name'] = $rule . '|string|max:255';
+                        break;
+                    case 'email':
+                        $rules['email'] = $rule . '|email|unique:attendees,email,NULL,id,event_id,' . $event->id;
+                        break;
+                    case 'phone':
+                        $rules['phone'] = $rule . '|string|max:20';
+                        break;
+                }
+            }
+        } else {
+            // Fallback to default rules if no default_fields configured
+            $rules = [
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:attendees,email,NULL,id,event_id,' . $event->id,
+                'phone' => 'nullable|string|max:20',
+            ];
+        }
+        
+        // Add custom data validation
+        $rules['custom_data'] = 'nullable|array';
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
@@ -175,15 +213,41 @@ class AttendeeController extends Controller
      */
     public function update(Request $request, Attendee $attendee)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:attendees,email,' . $attendee->id . ',id,event_id,' . $attendee->event_id,
-            'phone' => 'nullable|string|max:20',
-            'company' => 'nullable|string|max:255',
-            'designation' => 'nullable|string|max:255',
-            'ticket_type' => 'nullable|string|max:100',
-            'custom_data' => 'nullable|array',
-        ]);
+        $event = $attendee->event;
+        
+        // Build validation rules based on event configuration
+        $rules = [];
+        
+        // Add rules for default fields
+        if ($event->default_fields) {
+            foreach ($event->default_fields as $fieldName => $fieldConfig) {
+                $rule = $fieldConfig['required'] ? 'required' : 'nullable';
+                
+                switch ($fieldName) {
+                    case 'name':
+                        $rules['name'] = $rule . '|string|max:255';
+                        break;
+                    case 'email':
+                        $rules['email'] = $rule . '|email|unique:attendees,email,' . $attendee->id . ',id,event_id,' . $attendee->event_id;
+                        break;
+                    case 'phone':
+                        $rules['phone'] = $rule . '|string|max:20';
+                        break;
+                }
+            }
+        } else {
+            // Fallback to default rules if no default_fields configured
+            $rules = [
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:attendees,email,' . $attendee->id . ',id,event_id,' . $attendee->event_id,
+                'phone' => 'nullable|string|max:20',
+            ];
+        }
+        
+        // Add custom data validation
+        $rules['custom_data'] = 'nullable|array';
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
@@ -278,9 +342,6 @@ class AttendeeController extends Controller
                     'name' => $data['name'] ?? '',
                     'email' => $data['email'] ?? '',
                     'phone' => $data['phone'] ?? null,
-                    'company' => $data['company'] ?? null,
-                    'designation' => $data['designation'] ?? null,
-                    'ticket_type' => $data['ticket_type'] ?? 'general',
                     'registration_source' => 'import',
                 ]);
 
@@ -310,7 +371,7 @@ class AttendeeController extends Controller
     {
         try {
             // Get all attendees with their event and check-in information
-            $attendees = Attendee::with(['event', 'checkedInBy'])
+            $attendees = Attendee::with(['event', 'checkedInBy', 'checkedOutBy'])
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -323,14 +384,13 @@ class AttendeeController extends Controller
                 'Name',
                 'Email', 
                 'Phone',
-                'Company',
-                'Designation',
-                'Ticket Type',
                 'Event',
                 'Registration Date',
                 'Check-in Status',
                 'Check-in Date',
                 'Checked-in By',
+                'Check-out Date',
+                'Checked-out By',
                 'Registration Source'
             ];
 
@@ -341,14 +401,13 @@ class AttendeeController extends Controller
                     $attendee->name ?? '',
                     $attendee->email ?? '',
                     $attendee->phone ?? '',
-                    $attendee->company ?? '',
-                    $attendee->designation ?? '',
-                    $attendee->ticket_type ?? '',
                     $attendee->event->name ?? '',
                     $attendee->created_at ? $attendee->created_at->format('Y-m-d H:i:s') : '',
-                    $attendee->is_checked_in ? 'Checked In' : 'Pending',
+                    !$attendee->is_checked_in ? 'Not Checked In' : ($attendee->checked_out_at ? 'Checked Out' : 'Present'),
                     $attendee->checked_in_at ? $attendee->checked_in_at->format('Y-m-d H:i:s') : '',
                     $attendee->checkedInBy->name ?? '',
+                    $attendee->checked_out_at ? $attendee->checked_out_at->format('Y-m-d H:i:s') : '',
+                    $attendee->checkedOutBy->name ?? '',
                     $attendee->registration_source ?? ''
                 ];
             }

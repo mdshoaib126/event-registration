@@ -16,6 +16,15 @@ import {
 } from 'lucide-react';
 import authService from '@/lib/auth';
 
+interface NavItem {
+  name: string;
+  href: string;
+  icon: any;
+  adminOnly?: boolean;
+  staffOnly?: boolean;
+  hideForStaff?: boolean;
+}
+
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,12 +44,18 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     router.push('/auth/login');
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     {
       name: 'Dashboard',
       href: '/admin',
       icon: BarChart3,
-      adminOnly: false,
+      adminOnly: true,  // Only admins see admin dashboard
+    },
+    {
+      name: 'Dashboard',
+      href: '/staff',
+      icon: BarChart3,
+      staffOnly: true,  // Only staff see staff dashboard
     },
     {
       name: 'Events',
@@ -52,13 +67,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       name: 'Attendees',
       href: '/admin/attendees',
       icon: Users,
-      adminOnly: false,
+      adminOnly: true,  // Only admins can manage all attendees
     },
     {
       name: 'Check-in',
       href: '/staff',
       icon: QrCode,
-      adminOnly: false,
+      adminOnly: false,  // Both staff and admin can access
+      hideForStaff: true,  // Hide this link for staff since they have dashboard
     },
     {
       name: 'Branding',
@@ -74,9 +90,20 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     },
   ];
 
-  const filteredNavItems = navItems.filter(item => 
-    !item.adminOnly || (user && user.role === 'admin')
-  );
+  const filteredNavItems = navItems.filter(item => {
+    if (!user) return false;
+    
+    // Show admin-only items only to admins
+    if (item.adminOnly && user.role !== 'admin') return false;
+    
+    // Show staff-only items only to staff
+    if (item.staffOnly && user.role !== 'event_staff') return false;
+    
+    // Hide check-in link for staff users (they have it as dashboard)
+    if (item.hideForStaff && user.role === 'event_staff') return false;
+    
+    return true;
+  });
 
   return (
     <>
@@ -96,7 +123,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       `}>
         <div className="flex items-center justify-between p-4 border-b">
           <h1 className="text-xl font-bold text-gray-800">
-            Event Registration Mangement System
+            Event Management System
           </h1>
           <button
             onClick={onClose}

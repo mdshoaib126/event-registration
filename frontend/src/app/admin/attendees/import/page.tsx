@@ -96,9 +96,9 @@ export default function BulkImportPage() {
   };
 
   const downloadTemplate = () => {
-    const csvContent = 'name,email,phone,company,designation,ticket_type\n' +
-                      'John Doe,john@example.com,+1234567890,ABC Corp,Manager,General\n' +
-                      'Jane Smith,jane@example.com,+1987654321,XYZ Ltd,Developer,VIP';
+    const csvContent = 'name,email,phone\n' +
+                      'John Doe,john@example.com,+1234567890\n' +
+                      'Jane Smith,jane@example.com,+1987654321';
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);

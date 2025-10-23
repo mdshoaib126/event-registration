@@ -20,6 +20,7 @@ class Event extends Model
         'banner',
         'event_logo',
         'custom_fields',
+        'default_fields',
         'is_active',
         'status',
         'max_attendees',
@@ -29,6 +30,7 @@ class Event extends Model
     protected $casts = [
         'event_date' => 'datetime',
         'custom_fields' => 'array',
+        'default_fields' => 'array',
         'is_active' => 'boolean',
     ];
 
