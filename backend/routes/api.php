@@ -21,6 +21,16 @@ use App\Http\Controllers\StaffController;
 |
 */
 
+// Health check route
+Route::get('health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Event Registration API is running',
+        'timestamp' => now(),
+        'version' => '1.0.0'
+    ]);
+});
+
 // Authentication routes
 Route::group(['prefix' => 'auth'], function () {
     Route::post('login', [AuthController::class, 'login']);
