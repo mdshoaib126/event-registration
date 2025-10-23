@@ -33,22 +33,30 @@ class AuthService {
     const response = await api.post('/auth/login', credentials);
     const data = response.data;
     
-    // Store token in cookie
+    // Store token in cookie with production-safe settings
     Cookies.set('auth_token', data.access_token, {
       expires: 7, // 7 days
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      secure: false, // Set to false for HTTP
+      sameSite: 'lax',
+      path: '/'
     });
     
-    // Store user data in localStorage
+    // Store user data in localStorage with error handling
     if (typeof window !== 'undefined') {
-      localStorage.setItem('user', JSON.stringify(data.user));
+      try {
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('auth_token', data.access_token);
+        console.log('User data stored in localStorage:', data.user);
+      } catch (error) {
+        console.error('Failed to store user data:', error);
+      }
     }
     
     // Update axios default headers immediately
     if (typeof window !== 'undefined') {
       import('./api').then(({ default: api }) => {
         api.defaults.headers.Authorization = `Bearer ${data.access_token}`;
+        console.log('Authorization header set:', api.defaults.headers.Authorization);
       });
     }
     
@@ -99,12 +107,29 @@ class AuthService {
   getUser(): User | null {
     if (typeof window === 'undefined') return null;
     
-    const userData = localStorage.getItem('user');
-    return userData ? JSON.parse(userData) : null;
+    try {
+      const userData = localStorage.getItem('user');
+      console.log('Retrieved user data from localStorage:', userData);
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Error parsing user data from localStorage:', error);
+      return null;
+    }
   }
 
   getToken(): string | undefined {
-    return Cookies.get('auth_token');
+    // Try localStorage first, then cookies
+    if (typeof window !== 'undefined') {
+      const tokenFromStorage = localStorage.getItem('auth_token');
+      if (tokenFromStorage) {
+        console.log('Token found in localStorage');
+        return tokenFromStorage;
+      }
+    }
+    
+    const tokenFromCookie = Cookies.get('auth_token');
+    console.log('Token from cookie:', tokenFromCookie ? 'found' : 'not found');
+    return tokenFromCookie;
   }
 
   isAuthenticated(): boolean {

@@ -23,17 +23,34 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      console.log('Starting login process...');
       const response = await authService.login(data);
       console.log('Login response:', response);
       
       // Wait a moment to ensure token is properly set
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Get user data after login
-      const user = authService.getUser();
+      // Get user data after login with multiple attempts
+      let user = authService.getUser();
+      let token = authService.getToken();
+      
       console.log('User after login:', user);
+      console.log('Token after login:', token);
+      console.log('localStorage data:', {
+        user: localStorage.getItem('user'),
+        token: localStorage.getItem('auth_token')
+      });
       
-      if (user) {
+      // Retry if data not found
+      if (!user || !token) {
+        console.log('Data not found, retrying...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        user = authService.getUser();
+        token = authService.getToken();
+        console.log('Retry - User:', user, 'Token:', token);
+      }
+      
+      if (user && token) {
         // Force page reload with redirect to ensure fresh state
         if (user.role === 'admin') {
           console.log('Redirecting to admin dashboard');
@@ -43,8 +60,9 @@ export default function LoginPage() {
           window.location.href = '/staff';
         }
       } else {
-        console.error('User data not found after login');
-        setError('Login successful but user data not found. Please try again.');
+        console.error('User data or token not found after login');
+        console.log('Available localStorage keys:', Object.keys(localStorage));
+        setError('Login successful but session not created. Please check browser settings and try again.');
       }
     } catch (error: any) {
       console.error('Login error:', error);
