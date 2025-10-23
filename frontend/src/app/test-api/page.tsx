@@ -14,7 +14,7 @@ export default function TestPage() {
       const data = await response.json();
       setResult('Health check: ' + JSON.stringify(data));
     } catch (error) {
-      setResult('Error: ' + error);
+      setResult('Error: ' + String(error));
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ export default function TestPage() {
       const data = await response.json();
       setResult('Login test: ' + JSON.stringify(data));
     } catch (error) {
-      setResult('Login error: ' + error);
+      setResult('Login error: ' + String(error));
     } finally {
       setLoading(false);
     }
