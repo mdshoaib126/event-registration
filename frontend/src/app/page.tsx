@@ -143,7 +143,7 @@ export default function Home() {
         </section>
 
         {/* Demo Credentials */}
-        <section className="py-8 bg-gray-50 rounded-xl">
+        {/* <section className="py-8 bg-gray-50 rounded-xl">
           <div className="max-w-2xl mx-auto text-center px-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Demo Credentials
@@ -161,7 +161,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </section>
+        </section> */}
       </div>
     </PublicLayout>
   );
