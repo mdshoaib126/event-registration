@@ -31,15 +31,20 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is admin
+    // Check if user is authenticated and is admin
     const user = authService.getUser();
-    if (!user || user.role !== 'admin') {
-      router.push('/staff');
+    const token = authService.getToken();
+    
+    if (!token || !user || user.role !== 'admin') {
+      router.push('/auth/login');
       return;
     }
 
     const loadDashboardData = async () => {
       try {
+        // Wait a moment to ensure token is set in axios
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Load recent events
         const eventsResponse = await eventService.getEvents({ page: 1 });
         const events = eventsResponse.data;

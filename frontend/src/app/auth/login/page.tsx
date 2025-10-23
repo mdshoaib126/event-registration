@@ -25,6 +25,9 @@ export default function LoginPage() {
     try {
       await authService.login(data);
       
+      // Wait a moment to ensure token is properly set
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       // Redirect based on user role
       const user = authService.getUser();
       if (user?.role === 'admin') {
@@ -35,6 +38,7 @@ export default function LoginPage() {
     } catch (error: any) {
       setError(
         error.response?.data?.error || 
+        error.response?.data?.message ||
         'Login failed. Please check your credentials.'
       );
     } finally {

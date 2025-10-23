@@ -45,6 +45,12 @@ class AuthService {
       localStorage.setItem('user', JSON.stringify(data.user));
     }
     
+    // Update axios default headers immediately
+    if (typeof window !== 'undefined') {
+      const api = require('./api').default;
+      api.defaults.headers.Authorization = `Bearer ${data.access_token}`;
+    }
+    
     return data;
   }
 
