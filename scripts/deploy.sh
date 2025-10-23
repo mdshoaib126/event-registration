@@ -128,7 +128,9 @@ sudo chmod -R 775 $BACKEND_DIR/bootstrap/cache
 
 # Restart services
 print_step "Restarting services..."
-sudo systemctl reload php8.2-fpm
+# Detect PHP version dynamically
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+sudo systemctl reload php$PHP_VERSION-fpm
 sudo systemctl reload nginx
 
 # Health check
@@ -151,7 +153,8 @@ else
 fi
 
 # Check PHP-FPM status
-if sudo systemctl is-active --quiet php8.2-fpm; then
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+if sudo systemctl is-active --quiet php$PHP_VERSION-fpm; then
     print_status "✅ PHP-FPM is running"
 else
     print_error "❌ PHP-FPM is not running"

@@ -1,7 +1,29 @@
 #!/bin/bash
 
 # Event Registration System - Digital Ocean Setup Script
-# Run this script on a fresh Ubuntu 20.04/22.04 droplet
+# Optimize PHP configuration
+print_status "Optimizing PHP configuration..."
+
+# Detect PHP version
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+print_status "Detected PHP version: $PHP_VERSION"
+
+# Check if PHP config file exists and optimize
+PHP_CONFIG="/etc/php/$PHP_VERSION/fpm/php.ini"
+if [ -f "$PHP_CONFIG" ]; then
+    sudo sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 64M/' "$PHP_CONFIG"
+    sudo sed -i 's/post_max_size = 8M/post_max_size = 64M/' "$PHP_CONFIG"
+    sudo sed -i 's/max_execution_time = 30/max_execution_time = 300/' "$PHP_CONFIG"
+    sudo sed -i 's/max_input_vars = 1000/max_input_vars = 3000/' "$PHP_CONFIG"
+    sudo sed -i 's/memory_limit = 128M/memory_limit = 256M/' "$PHP_CONFIG"
+    
+    # Restart PHP-FPM
+    sudo systemctl restart php$PHP_VERSION-fpm
+    print_status "PHP configuration optimized"
+else
+    print_warning "PHP config file not found at $PHP_CONFIG"
+    print_warning "You may need to optimize PHP settings manually"
+fi script on a fresh Ubuntu 20.04/22.04 droplet
 
 set -e
 
