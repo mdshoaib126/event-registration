@@ -8,6 +8,7 @@ use App\Http\Controllers\AttendeeController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\ClientBrandingController;
 use App\Http\Controllers\TestQrController;
+use App\Http\Controllers\StaffController;
 
 /*
 |--------------------------------------------------------------------------
@@ -59,6 +60,10 @@ Route::group(['middleware' => ['auth:api']], function () {
         
         // Client branding
         Route::apiResource('client-branding', ClientBrandingController::class);
+        
+        // Staff management
+        Route::apiResource('staff', StaffController::class);
+        Route::get('staff-stats', [StaffController::class, 'stats']);
     });
     
     // Admin and Event Staff routes

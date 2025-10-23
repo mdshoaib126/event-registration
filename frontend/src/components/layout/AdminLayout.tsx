@@ -12,7 +12,8 @@ import {
   Menu, 
   X,
   BarChart3,
-  Palette
+  Palette,
+  UserCheck
 } from 'lucide-react';
 import authService from '@/lib/auth';
 
@@ -68,6 +69,12 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       href: '/admin/attendees',
       icon: Users,
       adminOnly: true,  // Only admins can manage all attendees
+    },
+    {
+      name: 'Staff',
+      href: '/admin/staff',
+      icon: UserCheck,
+      adminOnly: true,  // Only admins can manage staff
     },
     {
       name: 'Check-in',
