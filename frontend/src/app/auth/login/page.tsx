@@ -171,11 +171,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="text-center">
-              <p className="text-xs text-gray-500">
-                Default credentials: admin@eventregistration.com / password123
-              </p>
-            </div>
+             
           </form>
         </div>
       </div>
