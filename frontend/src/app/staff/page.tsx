@@ -27,7 +27,12 @@ export default function StaffPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
-  const [manualInput, setManualInput] = useState('');
+  const [todayStats, setTodayStats] = useState({
+    totalCheckIns: 0,
+    totalCheckOuts: 0,
+    currentlyPresent: 0
+  });
+
   const [cameraAvailable, setCameraAvailable] = useState<boolean | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -40,7 +45,27 @@ export default function StaffPage() {
       router.push('/auth/login');
       return;
     }
+    
+
   }, [router]);
+
+  // Calculate today's statistics from recent scans
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayScans = recentScans.filter(scan => {
+      const scanDate = new Date(scan.scannedAt).toISOString().split('T')[0];
+      return scanDate === today;
+    });
+    
+    const checkIns = todayScans.filter(scan => scan.action === 'check_in').length;
+    const checkOuts = todayScans.filter(scan => scan.action === 'check_out').length;
+    
+    setTodayStats({
+      totalCheckIns: checkIns,
+      totalCheckOuts: checkOuts,
+      currentlyPresent: Math.max(0, checkIns - checkOuts)
+    });
+  }, [recentScans]);
 
   const startScanning = async () => {
     console.log('Start scanning clicked...');
@@ -185,6 +210,8 @@ export default function StaffPage() {
         action: result.action || 'check_in'
       }, ...prev.slice(0, 9)]);
       
+      // Statistics will be automatically updated via useEffect when recentScans changes
+      
       // Resume scanning after 2 seconds
       setTimeout(() => {
         if (qrScannerRef.current && isScanning) {
@@ -208,39 +235,7 @@ export default function StaffPage() {
     }
   };
 
-  const handleManualScan = async (qrData: string) => {
-    try {
-      setScanResult(null);
-      const result = await attendeeService.scanQrCode(qrData);
-      
-      setScanResult({
-        success: true,
-        message: result.message,
-        action: result.action,
-        attendee: result.attendee
-      });
 
-      // Add to recent scans
-      setRecentScans(prev => [{
-        attendee: result.attendee,
-        scannedAt: new Date().toISOString(),
-        action: result.action || 'check_in'
-      }, ...prev.slice(0, 9)]);
-      
-      // Auto-clear result after 3 seconds
-      setTimeout(() => setScanResult(null), 3000);
-      
-    } catch (error: any) {
-      setScanResult({
-        success: false,
-        message: error.response?.data?.error || 'Failed to process QR code',
-        error: error.response?.data?.error
-      });
-      
-      // Auto-clear error after 5 seconds
-      setTimeout(() => setScanResult(null), 5000);
-    }
-  };
 
   useEffect(() => {
     // Check camera availability on mount
@@ -311,7 +306,7 @@ export default function StaffPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Today's Check-ins</p>
-                <p className="text-2xl font-semibold text-gray-900">{recentScans.length}</p>
+                <p className="text-2xl font-semibold text-gray-900">{todayStats.totalCheckIns}</p>
               </div>
             </div>
           </div>
@@ -319,27 +314,23 @@ export default function StaffPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-blue-500">
-                <QrCode className="w-6 h-6 text-white" />
+                <CheckCircle className="w-6 h-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Scanner Status</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {cameraAvailable ? 'Camera Ready' : 'Manual Mode'}
-                </p>
+                <p className="text-sm font-medium text-gray-600">Currently Present</p>
+                <p className="text-2xl font-semibold text-gray-900">{todayStats.currentlyPresent}</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-500">
-                <Camera className="w-6 h-6 text-white" />
+              <div className="p-3 rounded-full bg-orange-500">
+                <X className="w-6 h-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Quick Actions</p>
-                <p className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
-                  Start Check-in
-                </p>
+                <p className="text-sm font-medium text-gray-600">Check-outs Today</p>
+                <p className="text-2xl font-semibold text-gray-900">{todayStats.totalCheckOuts}</p>
               </div>
             </div>
           </div>
@@ -414,12 +405,12 @@ export default function StaffPage() {
                         <p className="mt-1 text-xs text-gray-500">
                           {cameraError}
                         </p>
-                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                          <p className="text-sm text-blue-800 font-medium">
-                            💡 Use Manual Input Instead
+                        <div className="mt-4 p-3 bg-amber-50 rounded-lg">
+                          <p className="text-sm text-amber-800 font-medium">
+                            � Camera Required
                           </p>
-                          <p className="text-xs text-blue-600 mt-1">
-                            Copy QR code data and paste it in the input field below
+                          <p className="text-xs text-amber-600 mt-1">
+                            Please enable camera access or use a device with camera support to scan QR codes
                           </p>
                         </div>
                       </div>
@@ -447,58 +438,7 @@ export default function StaffPage() {
               )}
             </div>
 
-            {/* Manual Input */}
-            <div className={`mt-4 ${cameraAvailable === false ? 'p-4 bg-blue-50 border border-blue-200 rounded-lg' : ''}`}>
-              <label htmlFor="manual-qr" className={`block text-sm font-medium mb-2 ${
-                cameraAvailable === false ? 'text-blue-900' : 'text-gray-700'
-              }`}>
-                {cameraAvailable === false ? '📱 Manual QR Code Input (Primary Method)' : 'Or enter QR code data manually:'}
-              </label>
-              {cameraAvailable === false && (
-                <p className="text-xs text-blue-700 mb-3">
-                  Since camera is not available, use this method to scan QR codes by copying and pasting the data.
-                </p>
-              )}
-              <div className="flex space-x-2">
-                <input
-                  id="manual-qr"
-                  type="text"
-                  value={manualInput}
-                  onChange={(e) => setManualInput(e.target.value)}
-                  placeholder="Paste QR code data here..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && manualInput.trim()) {
-                      handleManualScan(manualInput.trim());
-                      setManualInput('');
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => {
-                    if (manualInput.trim()) {
-                      handleManualScan(manualInput.trim());
-                      setManualInput('');
-                    }
-                  }}
-                  disabled={!manualInput.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300"
-                >
-                  Scan
-                </button>
-              </div>
-              
-              {cameraAvailable === false && (
-                <div className="mt-3 pt-3 border-t border-blue-200">
-                  <button
-                    onClick={checkCameraAvailability}
-                    className="text-sm text-blue-600 hover:text-blue-800 underline"
-                  >
-                    🔄 Retry Camera Detection
-                  </button>
-                </div>
-              )}
-            </div>
+
           </div>
 
           {/* Scan Result */}
@@ -549,11 +489,24 @@ export default function StaffPage() {
                     </p>
                     
                     {scanResult.attendee && (
-                      <div className="mt-3 text-sm text-gray-900">
+                      <div className="mt-3 text-sm text-gray-900 space-y-1">
                         <p><strong>Name:</strong> {scanResult.attendee.name}</p>
                         <p><strong>Email:</strong> {scanResult.attendee.email}</p>
                         {scanResult.attendee.phone && (
                           <p><strong>Phone:</strong> {scanResult.attendee.phone}</p>
+                        )}
+                        
+                        {/* Display custom fields */}
+                        {scanResult.attendee.custom_data && Object.keys(scanResult.attendee.custom_data).length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="font-medium text-gray-700 mb-2">Additional Information:</p>
+                            {Object.entries(scanResult.attendee.custom_data).map(([key, value]) => (
+                              <p key={key}>
+                                <strong>{key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}:</strong>{' '}
+                                {Array.isArray(value) ? value.join(', ') : String(value)}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                     )}
@@ -595,11 +548,23 @@ export default function StaffPage() {
                 return (
                   <div key={`${scan.attendee.id}-${index}-${scan.scannedAt}`} className="px-6 py-4">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-sm font-medium text-gray-900">{scan.attendee.name}</h3>
                         <p className="text-sm text-gray-500">{scan.attendee.email}</p>
                         {scan.attendee.phone && (
                           <p className="text-sm text-gray-500">{scan.attendee.phone}</p>
+                        )}
+                        
+                        {/* Display custom fields in recent scans */}
+                        {scan.attendee.custom_data && Object.keys(scan.attendee.custom_data).length > 0 && (
+                          <div className="mt-2 text-xs text-gray-600 space-y-1">
+                            {Object.entries(scan.attendee.custom_data).map(([key, value]) => (
+                              <p key={key}>
+                                <span className="font-medium">{key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}:</span>{' '}
+                                {Array.isArray(value) ? value.join(', ') : String(value)}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                       <div className="text-right">
